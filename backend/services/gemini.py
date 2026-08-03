@@ -10,7 +10,7 @@ def ensure_configured():
     if not _configured:
         if not GEMINI_API_KEY:
             raise RuntimeError("GEMINI_API_KEY is not set. Add it to your .env file.")
-        genai.configure(api_key=GEMINI_API_KEY)
+        genai.configure(api_key=GEMINI_API_KEY, transport="rest")
         _configured = True
 
 

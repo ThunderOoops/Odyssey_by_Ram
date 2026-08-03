@@ -76,7 +76,6 @@ def chat():
        "If asked about the time in another timezone, calculate it precisely from this UTC time "
        "rather than guessing or assuming the user's local time."
         ]
-        ]
         if memory_ctx:
             system_parts.append(memory_ctx)
         if rag_ctx:

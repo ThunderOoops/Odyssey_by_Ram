@@ -68,9 +68,14 @@ def chat():
         rag_chunks = retrieve_relevant_chunks(db, user_message) if use_rag else []
         rag_ctx = build_rag_context(rag_chunks)
 
+        current_time = datetime.now(timezone.utc)
         system_parts = [
-            "You are Odyssey, a thoughtful and precise AI assistant. "
-            "Format responses in markdown. Use code blocks with language tags for code."
+       "You are Odyssey, a thoughtful and precise AI assistant. "
+       "Format responses in markdown. Use code blocks with language tags for code. "
+       f"The current date and time is {current_time.strftime('%A, %B %d, %Y, %H:%M UTC')}. "
+       "If asked about the time in another timezone, calculate it precisely from this UTC time "
+       "rather than guessing or assuming the user's local time."
+        ]
         ]
         if memory_ctx:
             system_parts.append(memory_ctx)

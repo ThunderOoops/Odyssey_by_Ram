@@ -1,3 +1,5 @@
+import time
+
 import google.generativeai as genai
 
 from config import GEMINI_API_KEY, GEMINI_EMBED_MODEL, GEMINI_MODEL
@@ -10,6 +12,9 @@ def ensure_configured():
     if not _configured:
         if not GEMINI_API_KEY:
             raise RuntimeError("GEMINI_API_KEY is not set. Add it to your .env file.")
+        # transport="rest" avoids a gRPC/OAuth auth error seen on some hosts (e.g. Render),
+        # but this SDK version's REST streaming is broken, so stream_chat below
+        # fetches the full response and chunks it manually instead of stream=True.
         genai.configure(api_key=GEMINI_API_KEY, transport="rest")
         _configured = True
 
@@ -32,18 +37,12 @@ def stream_chat(messages: list[dict], system_instruction: str):
 
     chat = model.start_chat(history=history)
     last = messages[-1]["content"]
-    response = chat.send_message(last, stream=True)
+    response = chat.send_message(last, stream=False)
+
+    text = response.text or ""
 
     input_tokens = 0
     output_tokens = 0
-
-    for chunk in response:
-        if chunk.text:
-            yield chunk.text
-        if chunk.usage_metadata:
-            input_tokens = chunk.usage_metadata.prompt_token_count or input_tokens
-            output_tokens = chunk.usage_metadata.candidates_token_count or output_tokens
-
     try:
         usage = response.usage_metadata
         if usage:
@@ -51,6 +50,17 @@ def stream_chat(messages: list[dict], system_instruction: str):
             output_tokens = usage.candidates_token_count or output_tokens
     except AttributeError:
         pass
+
+    # Chunk the full response into small pieces so the frontend still
+    # sees it stream in word-by-word instead of appearing all at once.
+    words = text.split(" ")
+    chunk_size = 3
+    for i in range(0, len(words), chunk_size):
+        piece = " ".join(words[i:i + chunk_size])
+        if i + chunk_size < len(words):
+            piece += " "
+        yield piece
+        time.sleep(0.03)
 
     yield {"__usage__": {"input_tokens": input_tokens, "output_tokens": output_tokens}}
 
